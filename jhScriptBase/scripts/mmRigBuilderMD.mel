@@ -1,0 +1,958 @@
+/*	mmRigBuilder
+	Author:	Kevin Hoppe khoppe@gmail.com
+	Usage:	This script builds common types of rigs used in Matchmoving.  There are currently 5 types implemented in this script.
+		Simple Camera Rig contrains a locator to the amera and parents a copy of that camera underneath.  
+		Refined Rotation Control creates a more refined rig for rotation with a series of parented locators.
+		Refined Translation Control creates a more refined rig for rotation with a series of parented locators.
+		Group Pivot Parents a camera under a selected locator so that the locator acts as a pivot point.
+		Constrain Aim creates a locator and constrains the camera's aim to it.
+
+		Simply select the appropriate items and run the script to build the rig you want
+
+		Version History:
+
+		V2:	Added graphical interface that shows what the rig builder will do in the outliner.  Added option to 
+			use group nodes instead of locators.
+		2.01	Prevented the window from being resizeable
+		2.1	Added a new even simpler option, that just creates a camera directly under the old camera.  Also
+			closed the window when finished.
+
+*/
+
+global proc mmRigBuilder(){
+	global string $form;
+	global string $checkBox;
+	global string $rig;
+	global string $comboBox;
+	global string $image;
+	global string $checkBox2;
+	if((`window -ex mmRigBuilder`))
+		deleteUI mmRigBuilder;
+        window -title "Rig Builder" -s 0 -w 245 -h 223 -resizeToFitChildren 1 mmRigBuilder;
+                string $lyt=`columnLayout -adj 1`;
+                        paneLayout -cn "single" -h 230;
+                                $form = `formLayout -numberOfDivisions 1000`;
+                                        
+                                        $comboBox = `optionMenuGrp -l "Rig Type:" -cal 1 "left" -cw 1 66 -cc mmChangeInstructions rigType`;
+                                                menuItem -label "No Rig";
+                                                menuItem -label "Simple Camera Rig";
+                                                menuItem -label "Refined Rotation Control";
+						menuItem -label "Refined Translation Control";
+						menuItem -label "Group Pivot";
+						menuItem -label "Aim Constrain";
+                                        
+                                        $checkBox = `checkBox -en 0 -al "left" -l "Parent Under Original" -v 1 -cc mmChangeInstructions parentCheckBox`;
+					$checkBox2 = `checkBox -en 0 -al "left" -l "Use GroupNodes" -v 0 -cc mmChangeInstructions groupCheckBox`;
+                               
+                                     $image = `image -i "/lustre/INHouse/MAYA/ishelf/icons/Matchmove/script_images/no_rig.bmp" -w 260 -h 180`;
+                                                       
+                                        $rig = `button -l "Rig" -h 30 -w 80 -c "createRig" btnRig`;
+
+                                        formLayout -edit
+                                                // combo box
+                                                -attachForm $comboBox "top" 5
+                                                -attachNone $comboBox "bottom"
+                                                -attachForm $comboBox "left" 5
+                                                -attachNone $comboBox "right"
+                                                
+                                                // check box
+                                                -attachForm $checkBox "top" 40
+                                                -attachNone $checkBox "bottom"
+                                                -attachForm $checkBox "left" 5
+                                                -attachNone $checkBox "right"
+						
+						 // check box2
+                                                -attachForm $checkBox2 "top" 80
+                                                -attachNone $checkBox2 "bottom"
+                                                -attachForm $checkBox2 "left" 5
+                                                -attachNone $checkBox2 "right"
+
+						//button
+						-attachForm $rig "top" 150
+                                                -attachNone $rig "bottom"
+                                                -attachForm $rig "left" 5
+                                                -attachNone $rig "right"
+
+						//image
+						-attachForm $image "top" 45
+                                                -attachNone $image "bottom"
+                                                -attachForm $image "left" 150
+                                                -attachNone $image "right"
+
+
+                                                                       
+                                        $form;
+
+
+                                setParent ..;
+                        setParent ..;
+                setParent ..;
+	window -e -wh 421 255 mmRigBuilder;
+        showWindow mmRigBuilder;
+	// force the window to be the right size, independent of any weird border width the user has.  (xp vs 2k)
+	window -e -wh (`window -q -w mmRigBuilder`+415-`layout -q -w $lyt`) (`window -q -h mmRigBuilder`+230-`layout -q -h $lyt`) mmRigBuilder;
+}
+
+
+/* *************************************************************
+  Determines the Rig Type to build and runs the appropriate
+  script, then exits.
+************************************************************** */
+
+global proc createRig(){
+	int $type = 0;
+	string $rigType = `optionMenuGrp -q -v rigType`;
+	switch ($rigType){
+		case "No Rig":
+			mmCamRig;
+			break;
+
+		case "Simple Camera Rig":
+			mmSimpleRefineCamRig;
+			break;
+		
+		case "Refined Rotation Control":
+			mmRotateRefineCamRig;
+			break;
+
+		case "Refined Translation Control":
+			mmTranslateRefineCamRig;
+			break;
+	
+		case "Group Pivot":
+			mmGroupPivot;
+			break;
+
+		case "Aim Constrain":
+			mmAimConstrain;
+			break;
+	}	
+	deleteUI mmRigBuilder;
+}
+
+
+/* *************************************************************
+  mmCamRig
+  *duplicates the camera with input connections
+  *deletes any keyframes on the camera
+  *point and orient constrains the new camera to the old one
+  *deletes the contraints
+  *parents the new camera under the old camera
+************************************************************** */
+
+
+global proc mmCamRig(){
+
+	string $selected[] = `ls -sl`;
+	string $CameraNodes = $selected[0];
+	//string $relCam[] = `listRelatives $CameraNodes`;
+	
+	string $Camera;
+	string $Locator2;
+	
+
+	if(`size $selected` > 1) 		
+	error("Select only one Camera");  
+	
+	if(`size $selected` < 1) 		
+	error("Select Your Camera");  
+
+	string $history[] = `listHistory $selected[0]`;
+	
+	if(`objectType -isType camera $history[0]`){
+		string $grabCamName[] = `ls -sl`;
+		$Camera = $grabCamName[0];
+	}else
+		error("Selection was not a camera\n");
+
+	string $NewCamera = "Refined_"+$Camera;
+
+	select -r $Camera;
+	$NewCamera = rbCopyCam($Camera);
+
+	cutKey -cl;
+	select -r $Camera;
+	select -tgl $NewCamera;
+	showHidden -a;
+	string $pointConstraintName2[] = `pointConstraint -offset 0 0 0 -weight 1`;
+	string $orientConstraintName2[] = `orientConstraint -offset 0 0 0 -weight 1`;
+	select -r $pointConstraintName2[0];
+	delete;
+	select -r $orientConstraintName2[0];
+	delete;
+	
+	parent $NewCamera $Camera;
+	
+}
+
+
+/* *************************************************************
+  mmSimpleRefineCamRig
+  *creates a locator and point and orient constrains it to the selected camera
+  *deletes the constraints
+  *duplicates the camera with input connections
+  *deletes any keyframes on the camera
+  *point and orient constrains the new camera to the old one
+  *deletes the contraints
+  *parents the locator under the old camera
+  *parents the new camera under the locator
+************************************************************** */
+
+
+global proc mmSimpleRefineCamRig(){
+
+	string $selected[] = `ls -sl`;
+	string $CameraNodes = $selected[0];
+	//string $relCam[] = `listRelatives $CameraNodes`;
+	
+	string $Camera;
+	string $Locator2;
+	
+
+	if(`size $selected` > 1) 		
+	error("Select only one Camera");  
+	
+	if(`size $selected` < 1) 		
+	error("Select Your Camera");  
+
+	string $history[] = `listHistory $selected[0]`;
+	
+	if(`objectType -isType camera $history[0]`){
+		string $grabCamName[] = `ls -sl`;
+		$Camera = $grabCamName[0];
+	}
+	else
+		error("Selection was not a camera\n");
+
+	string $NewCamera = "Refined_"+$Camera;
+	spaceLocator -p 0 0 0;
+	string $grabLocatorName[] = `ls -sl`;
+	string $Locator1 = $grabLocatorName[0];
+
+	if(`checkBox -q -v groupCheckBox` == 1){
+		select $Locator1;
+		pickWalk -d down;
+		delete;
+	}
+	
+	if(`checkBox -q -v parentCheckBox` == 0){
+		spaceLocator -p 0 0 0;
+		string $grabLocatorName2[] = `ls -sl`;
+		$Locator2 = $grabLocatorName2[0];
+		if(`checkBox -q -v groupCheckBox` == 1){
+			select $Locator2;
+			pickWalk -d down;
+			delete;
+		}
+	}
+
+	select -r $Camera;
+	select -tgl $Locator1;
+	string $pointConstraintName1[] = `pointConstraint -offset 0 0 0 -weight 1`;
+	string $orientConstraintName1[] = `orientConstraint -offset 0 0 0 -weight 1`;
+	if (`checkBox -q -v parentCheckBox`){
+	
+	select -r $pointConstraintName1[0];
+	delete;
+	select -r $orientConstraintName1[0];
+	delete;
+	parent $Locator1 $Camera;
+	}
+	if(`checkBox -q -v parentCheckBox` == 0){
+	select -r $Camera;
+	select -tgl $Locator2;
+	string $pointConstraintName2[] = `pointConstraint -offset 0 0 0 -weight 1`;
+	string $orientConstraintName2[] = `orientConstraint -offset 0 0 0 -weight 1`;
+	select -r $pointConstraintName1[0];
+	delete;
+	select -r $orientConstraintName1[0];
+	delete;
+	parent $Locator1 $Locator2;
+	}
+
+	select -r $Camera;
+	$NewCamera = rbCopyCam($Camera);
+	/*duplicate -ic -un -n $NewCamera;*/
+	cutKey -cl;
+	select -r $Camera;
+	select -tgl $NewCamera;
+	showHidden -a;
+	string $pointConstraintName2[] = `pointConstraint -offset 0 0 0 -weight 1`;
+	string $orientConstraintName2[] = `orientConstraint -offset 0 0 0 -weight 1`;
+	select -r $pointConstraintName2[0];
+	delete;
+	select -r $orientConstraintName2[0];
+	delete;
+	
+	parent $NewCamera $Locator1;
+	
+	string $NewLocatorName = "Rotate_Translate";
+	rename $Locator1 $NewLocatorName;
+	if(`checkBox -q -v parentCheckBox` == 0){
+		rename $Locator2 "simpleRig";
+	}
+
+}
+
+
+/* *************************************************************
+  mmRotateRefineCamRig
+  *creates 3 locators and point and orient constrains them to the selected camera
+  *deletes the constraints
+  *duplicates the camera with input connections
+  *deletes any keyframes on the camera
+  *point and orient constrains the new camera to the old one
+  *deletes the contraints
+  *parents the first locator under the old camera
+  *parents the second locator under the first locator
+  *parents the third locator under the second locator
+  *parents the new camera under the third locator
+  *names the 3 locators X_Rotate, Y_Rotate, and Z_Rotate
+  *locks all channels on the three locators except their respectful rotation
+************************************************************** */
+
+global proc mmRotateRefineCamRig(){
+	string $selected[] = `ls -sl`;
+	string $CameraNodes = $selected[0];
+	//string $relCam[] = `listRelatives $CameraNodes`;
+	
+	string $Camera;
+
+	if(`size $selected` > 1) 		
+	error("Select only one Camera");  
+	
+	if(`size $selected` < 1) 		
+	error("Select Your Camera");  
+
+	string $history[] = `listHistory $selected[0]`;
+	
+	if(`objectType -isType camera $history[0]`){
+		string $grabCamName[] = `ls -sl`;
+		$Camera = $grabCamName[0];
+	}
+	else
+		error("Selection was not a camera\n");
+
+	
+	string $NewCamera = "Refined_"+$Camera;
+	
+	spaceLocator -p 0 0 0;
+	string $grabLocatorName1[] = `ls -sl`;
+	string $Locator1 = $grabLocatorName1[0];
+
+	spaceLocator -p 0 0 0;
+	string $grabLocatorName2[] = `ls -sl`;
+	string $Locator2 = $grabLocatorName2[0];
+
+	spaceLocator -p 0 0 0;
+	string $grabLocatorName3[] = `ls -sl`;
+	string $Locator3 = $grabLocatorName3[0];
+
+	spaceLocator -p 0 0 0;
+	string $grabLocatorName4[] = `ls -sl`;
+	string $Locator4 = $grabLocatorName4[0];
+	if(`checkBox -q -v groupCheckBox` == 1){
+		select $Locator1;
+		pickWalk -d down;
+		delete;
+		select $Locator2;
+		pickWalk -d down;
+		delete;
+		select $Locator3;
+		pickWalk -d down;
+		delete;
+		select $Locator4;
+		pickWalk -d down;
+		delete;
+	}
+	select -r $Camera;
+	select -tgl $Locator1;
+	string $pointConstraintName1[] = `pointConstraint -offset 0 0 0 -weight 1`;
+	string $orientConstraintName1[] = `orientConstraint -offset 0 0 0 -weight 1`;
+	
+	select -r $Camera;
+	select -tgl $Locator4;
+	string $pointConstraintNameBase[] = `pointConstraint -offset 0 0 0 -weight 1`;
+	string $orientConstraintNameBase[] = `orientConstraint -offset 0 0 0 -weight 1`;
+
+	if (`checkBox -q -v parentCheckBox`){
+	select -r $pointConstraintNameBase[0];
+	delete;
+	select -r $orientConstraintNameBase[0];
+	delete;
+	}
+	
+	select -r $pointConstraintName1[0];
+	delete;
+	select -r $orientConstraintName1[0];
+	delete;
+
+	select -r $Camera;
+	select -tgl $Locator2;
+	string $pointConstraintName2[] = `pointConstraint -offset 0 0 0 -weight 1`;
+	string $orientConstraintName2[] = `orientConstraint -offset 0 0 0 -weight 1`;
+	select -r $pointConstraintName2[0];
+	delete;
+	select -r $orientConstraintName2[0];
+	delete;
+
+	select -r $Camera;
+	select -tgl $Locator3;
+	string $pointConstraintName3[] = `pointConstraint -offset 0 0 0 -weight 1`;
+	string $orientConstraintName3[] = `orientConstraint -offset 0 0 0 -weight 1`;
+	select -r $pointConstraintName3[0];
+	delete;
+	select -r $orientConstraintName3[0];
+	delete;
+
+	select -r $Camera;
+	/*duplicate -ic -un -n $NewCamera;*/
+	$NewCamera = rbCopyCam($Camera);
+	cutKey -cl;
+	select -r $Camera;
+	select -tgl $NewCamera;
+	showHidden -a;
+	string $pointConstraintName2[] = `pointConstraint -offset 0 0 0 -weight 1`;
+	string $orientConstraintName2[] = `orientConstraint -offset 0 0 0 -weight 1`;
+	select -r $pointConstraintName2[0];
+	delete;
+	select -r $orientConstraintName2[0];
+	delete;
+	if (`checkBox -q -v parentCheckBox`){
+	parent $Locator4 $Camera;
+	}
+	parent $Locator1 $Locator4;
+	parent $Locator2 $Locator1;
+	parent $Locator3 $Locator2;
+	parent $NewCamera $Locator3;
+	
+	string $Locator1TX = $Locator1+".tx";
+	string $Locator1TY = $Locator1+".ty";
+	string $Locator1TZ = $Locator1+".tz";
+	string $Locator1RY = $Locator1+".ry";
+	string $Locator1RZ = $Locator1+".rz";
+		
+	string $Locator2TX = $Locator2+".tx";
+	string $Locator2TY = $Locator2+".ty";
+	string $Locator2TZ = $Locator2+".tz";
+	string $Locator2RX = $Locator2+".rx";
+	string $Locator2RZ = $Locator2+".rz";
+
+	string $Locator3TX = $Locator3+".tx";
+	string $Locator3TY = $Locator3+".ty";
+	string $Locator3TZ = $Locator3+".tz";
+	string $Locator3RX = $Locator3+".rx";
+	string $Locator3RY = $Locator3+".ry";
+
+	string $Locator4TX = $Locator4+".tx";
+	string $Locator4TY = $Locator4+".ty";
+	string $Locator4TZ = $Locator4+".tz";
+	string $Locator4RX = $Locator4+".rx";
+	string $Locator4RY = $Locator4+".ry";
+	string $Locator4RZ = $Locator4+".rz";
+
+
+	setAttr -lock true $Locator1TX;
+	setAttr -lock true $Locator1TY;
+	setAttr -lock true $Locator1TZ;
+	setAttr -lock true $Locator1RY;
+	setAttr -lock true $Locator1RZ;
+	setAttr -lock true $Locator2TX;
+	setAttr -lock true $Locator2TY;
+	setAttr -lock true $Locator2TZ;
+	setAttr -lock true $Locator2RX;
+	setAttr -lock true $Locator2RZ;
+	setAttr -lock true $Locator3TX;
+	setAttr -lock true $Locator3TY;
+	setAttr -lock true $Locator3TZ;
+	setAttr -lock true $Locator3RX;
+	setAttr -lock true $Locator3RY;
+
+	setAttr -lock true $Locator4TX;
+	setAttr -lock true $Locator4TY;
+	setAttr -lock true $Locator4TZ;
+	setAttr -lock true $Locator4RX;
+	setAttr -lock true $Locator4RY;
+	setAttr -lock true $Locator4RZ;
+
+	string $NewLocatorNameX = "X_Rotate";
+	string $NewLocatorNameY = "Y_Rotate";
+	string $NewLocatorNameZ = "Z_Rotate";
+	rename $Locator1 $NewLocatorNameX;
+	rename $Locator2 $NewLocatorNameY;
+	rename $Locator3 $NewLocatorNameZ;
+	rename $Locator4 ($Camera+"Rotation_Rig");
+
+}
+
+/* *************************************************************
+  mmTranslateRefineCamRig
+  *creates 3 locators and point and orient constrains them to the selected camera
+  *deletes the constraints
+  *duplicates the camera with input connections
+  *deletes any keyframes on the camera
+  *point and orient constrains the new camera to the old one
+  *deletes the contraints
+  *parents the first locator under the old camera
+  *parents the second locator under the first locator
+  *parents the third locator under the second locator
+  *parents the new camera under the third locator
+  *names the 3 locators X_Translate, Y_Translate, and Z_Translate
+  *locks all channels on the three locators except their respectful translation
+************************************************************** */
+
+
+
+global proc mmTranslateRefineCamRig(){
+	string $selected[] = `ls -sl`;
+	string $CameraNodes = $selected[0];
+	//string $relCam[] = `listRelatives $CameraNodes`;
+
+	string $Camera;
+
+	if(`size $selected` > 1) 		
+	error("Select only one Camera");  
+	
+	if(`size $selected` < 1) 		
+	error("Select Your Camera"); 
+
+	string $history[] = `listHistory $selected[0]`;
+	
+	if(`objectType -isType camera $history[0]`){
+		string $grabCamName[] = `ls -sl`;
+		$Camera = $grabCamName[0];
+	}
+	else
+		error("Selection was not a camera\n");
+
+	
+
+	string $NewCamera;
+	
+	spaceLocator -p 0 0 0;
+	string $grabLocatorName1[] = `ls -sl`;
+	string $Locator1 = $grabLocatorName1[0];
+
+	spaceLocator -p 0 0 0;
+	string $grabLocatorName2[] = `ls -sl`;
+	string $Locator2 = $grabLocatorName2[0];
+
+	spaceLocator -p 0 0 0;
+	string $grabLocatorName3[] = `ls -sl`;
+	string $Locator3 = $grabLocatorName3[0];
+
+	spaceLocator -p 0 0 0;
+	string $grabLocatorName4[] = `ls -sl`;
+	string $Locator4 = $grabLocatorName4[0];
+	if(`checkBox -q -v groupCheckBox` == 1){
+		select $Locator1;
+		pickWalk -d down;
+		delete;
+		select $Locator2;
+		pickWalk -d down;
+		delete;
+		select $Locator3;
+		pickWalk -d down;
+		delete;
+		select $Locator4;
+		pickWalk -d down;
+		delete;
+	}
+	select -r $Camera;
+	select -tgl $Locator4;
+	string $pointConstraintNameBase[] = `pointConstraint -offset 0 0 0 -weight 1`;
+	string $orientConstraintNameBase[] = `orientConstraint -offset 0 0 0 -weight 1`;
+	if (`checkBox -q -v parentCheckBox`){
+	select -r $pointConstraintNameBase[0];
+	delete;
+	select -r $orientConstraintNameBase[0];
+	delete;
+	}
+	select -r $Camera;
+	select -tgl $Locator1;
+	string $pointConstraintName1[] = `pointConstraint -offset 0 0 0 -weight 1`;
+	string $orientConstraintName1[] = `orientConstraint -offset 0 0 0 -weight 1`;
+	select -r $pointConstraintName1[0];
+	delete;
+	select -r $orientConstraintName1[0];
+	delete;
+	
+	select -r $Camera;
+	select -tgl $Locator2;
+	string $pointConstraintName2[] = `pointConstraint -offset 0 0 0 -weight 1`;
+	string $orientConstraintName2[] = `orientConstraint -offset 0 0 0 -weight 1`;
+	select -r $pointConstraintName2[0];
+	delete;
+	select -r $orientConstraintName2[0];
+	delete;
+
+	select -r $Camera;
+	select -tgl $Locator3;
+	string $pointConstraintName3[] = `pointConstraint -offset 0 0 0 -weight 1`;
+	string $orientConstraintName3[] = `orientConstraint -offset 0 0 0 -weight 1`;
+	select -r $pointConstraintName3[0];
+	delete;
+	select -r $orientConstraintName3[0];
+	delete;
+
+	select -r $Camera;
+	$NewCamera = rbCopyCam($Camera);
+	/*duplicate -ic -un -n $NewCamera;*/
+	cutKey -cl;
+	select -r $Camera;
+	select -tgl $NewCamera;
+	showHidden -a;
+	string $pointConstraintName2[] = `pointConstraint -offset 0 0 0 -weight 1`;
+	string $orientConstraintName2[] = `orientConstraint -offset 0 0 0 -weight 1`;
+	select -r $pointConstraintName2[0];
+	delete;
+	select -r $orientConstraintName2[0];
+	delete;
+	if (`checkBox -q -v parentCheckBox`){
+		parent $Locator4 $Camera;
+	}
+	parent $Locator1 $Locator4;
+	parent $Locator2 $Locator1;
+	parent $Locator3 $Locator2;
+	parent $NewCamera $Locator3;
+	
+	string $Locator1TY = $Locator1+".ty";
+	string $Locator1TZ = $Locator1+".tz";
+	string $Locator1RX = $Locator1+".rx";
+	string $Locator1RY = $Locator1+".ry";
+	string $Locator1RZ = $Locator1+".rz";
+	
+	string $Locator2TX = $Locator2+".tx";
+	string $Locator2TZ = $Locator2+".tz";
+	string $Locator2RX = $Locator2+".rx";
+	string $Locator2RY = $Locator2+".ry";
+	string $Locator2RZ = $Locator2+".rz";
+
+	string $Locator3TX = $Locator3+".tx";
+	string $Locator3TY = $Locator3+".ty";
+	string $Locator3RX = $Locator3+".rx";
+	string $Locator3RY = $Locator3+".ry";
+	string $Locator3RZ = $Locator3+".rz";
+
+	string $Locator4TX = $Locator4+".tx";
+	string $Locator4TY = $Locator4+".ty";
+	string $Locator4TZ = $Locator4+".tz";
+	string $Locator4RX = $Locator4+".rx";
+	string $Locator4RY = $Locator4+".ry";
+	string $Locator4RZ = $Locator4+".rz";
+
+	setAttr -lock true $Locator1TY;
+	setAttr -lock true $Locator1TZ;
+	setAttr -lock true $Locator1RX;
+	setAttr -lock true $Locator1RY;
+	setAttr -lock true $Locator1RZ;
+
+	setAttr -lock true $Locator2TX;
+	setAttr -lock true $Locator2TZ;
+	setAttr -lock true $Locator2RX;
+	setAttr -lock true $Locator2RY;
+	setAttr -lock true $Locator2RZ;
+
+	setAttr -lock true $Locator3TX;
+	setAttr -lock true $Locator3TY;
+	setAttr -lock true $Locator3RX;
+	setAttr -lock true $Locator3RY;
+	setAttr -lock true $Locator3RZ;
+
+	setAttr -lock true $Locator4TX;
+	setAttr -lock true $Locator4TY;
+	setAttr -lock true $Locator4TZ;
+	setAttr -lock true $Locator4RX;
+	setAttr -lock true $Locator4RY;
+	setAttr -lock true $Locator4RZ;
+
+	string $NewLocatorNameX = "X_Translate";
+	string $NewLocatorNameY = "Y_Translate";
+	string $NewLocatorNameZ = "Z_Translate";
+	rename $Locator1 $NewLocatorNameX;
+	rename $Locator2 $NewLocatorNameY;
+	rename $Locator3 $NewLocatorNameZ;
+	rename $Locator4 ($Camera+"Translation_Rig");
+
+}
+
+
+global proc mmGroupPivot(){
+	
+
+	string $selected[] = `ls -sl`;
+	
+	//string $relCam[] = `listRelatives $CameraNodes`;
+	//string $relLoc[] = `listRelatives $LocatorNodes`;
+	
+	string $Camera;
+	string $Locator;
+	
+		
+	if(`size $selected` > 2) 		
+	error("Select one Camera and One Locator");  
+	
+	if(`size $selected` < 2) 		
+	error("Select a Camera Then a Locator");  
+
+	string $historyC[] = `listHistory $selected[0]`;
+	string $historyL[] = `listHistory $selected[1]`;
+	
+	if(`objectType -isType camera $historyC[0]`){
+		string $grabCamName[] = `ls -sl`;
+		$Camera = $grabCamName[0];
+	}
+	
+	else
+		error("First Selection was not a Camera\n");
+
+	if(`objectType -isType locator $historyL[0]`)
+		$Locator = $selected[1];
+	
+	else
+		error("Second Selection was not a Locator\n");
+	
+	
+	string $CamGroup = `group $Camera`;
+	select $CamGroup;
+	vector $locatorLocation = `xform -q -ws -t $Locator`;
+	
+	//cleanly move the group's pivot to the location of the locator
+	EnterEditMode;
+	ctxEditMode;
+	xform -ws -t ($locatorLocation.x) ($locatorLocation.y) ($locatorLocation.z) group1.scalePivot group1.rotatePivot ;
+	EnterEditMode;
+	ctxEditMode;
+	select -r $Camera;
+	select -add $Locator;
+	select $CamGroup;
+
+	// Good names for the rig
+	$Locator = `rename $Locator ($Camera + "_Pivot")`;
+	$CamGroup = `rename $CamGroup ($Camera + "_Grp")`;
+
+	// Expression for constraining the group's pivot point to the  locator
+	string $pivotExpression = ($CamGroup+".rotatePivotX = "+$Locator+".translateX;\n "+$CamGroup+".rotatePivotY = "+ $Locator+".translateY;\n "+$CamGroup+".rotatePivotZ = "+$Locator+".translateZ");
+	expression -s $pivotExpression;
+
+}
+
+global proc mmAimConstrain(){
+
+	string $selected[] = `ls -sl`;
+	string $CameraNodes = $selected[0];
+	//string $relCam[] = `listRelatives $CameraNodes`;
+	string $Camera;
+
+	if(`size $selected` > 1) 		
+	error("Select only one Camera");  
+	
+	if(`size $selected` < 1) 		
+	error("Select Your Camera");  
+
+	string $history[] = `listHistory $selected[0]`;
+	
+	if(`objectType -isType camera $history[0]`){
+		string $grabCamName[] = `ls -sl`;
+		$Camera = $grabCamName[0];
+	}
+	else
+		error("Selection was not a camera\n");
+
+		
+	string $Locator[] = `spaceLocator -p 0 0 0`;
+	select -r $Locator[0];
+	select -tgl $Camera;
+	aimConstraint -offset 0 0 0 -weight 1 -aimVector 0 0 -1 -upVector 0 1 0 -worldUpType "vector" -worldUpVector 0 1 0;
+	rename $Locator ($Camera + "_Aim");
+}
+
+
+	
+global proc string rbCopyCam(string $camera_trans)
+{
+	int $err1;
+	int $err2;
+
+	// check to make sure we were given a camera_trans
+	string $history[] = `listHistory $camera_trans`;
+
+	string $camera;
+	
+	if(`objectType -isType camera $history[0]`)
+		$camera = $history[0];
+	else
+		error("bbDupCam not given a camera\n");
+
+	// make a new camera with all the old attributes
+	string $new_cams[] = eval("camera" + 
+		" -centerOfInterest " + eval("getAttr " + $camera + ".centerOfInterest") + 
+		" -focalLength " + eval("getAttr " + $camera + ".focalLength") +
+		" -lensSqueezeRatio " + eval("getAttr " + $camera + ".lensSqueezeRatio") +
+		" -cameraScale " + eval("getAttr " + $camera + ".cameraScale") +
+		" -horizontalFilmAperture " + eval("getAttr " + $camera + ".horizontalFilmAperture") +
+		" -horizontalFilmOffset " + eval("getAttr " + $camera + ".horizontalFilmOffset") +
+		" -verticalFilmAperture " + eval("getAttr " + $camera + ".verticalFilmAperture") +
+		" -verticalFilmOffset " + eval("getAttr " + $camera + ".verticalFilmOffset") +
+		" -filmFit " + eval("getAttr " + $camera + ".filmFit") +
+		" -overscan " + eval("getAttr " + $camera + ".overscan") +
+		" -motionBlur " + eval("getAttr " + $camera + ".motionBlur") +
+		" -shutterAngle " + eval("getAttr " + $camera + ".shutterAngle") +
+		" -nearClipPlane " + eval("getAttr " + $camera + ".nearClipPlane") +
+		" -farClipPlane " + eval("getAttr " + $camera + ".farClipPlane") +
+		" -orthographic " + eval("getAttr " + $camera + ".orthographic") +
+		" -orthographicWidth " + eval("getAttr " + $camera + ".orthographicWidth")
+	);
+
+	string $new_cam_trans = $new_cams[0];
+	string $new_cam = $new_cams[1];
+	
+	// set old camera to not renderable, new one to renderable
+	eval("setAttr " + $camera + ".renderable 0");
+	eval("setAttr " + $new_cam + ".renderable 1");
+	
+	// turn off auto clipping planes on new camera
+	eval("setAttr " + $new_cam + ".bestFitClippingPlanes 0");
+
+	// attach image plane to new camera
+	int $x;
+	string $image_planes[] = `listConnections ($camera + ".imagePlane")`;
+	print $image_planes[0];
+	print $image_planes[1];
+	if(`size $image_planes`){
+		int $iCount = `size $image_planes`;
+		for($x=0;$x<$iCount;$x++){			
+			connectAttr -f ($image_planes[$x] + ".message") ($new_cam + ".imagePlane["+$x+"]");
+		}
+	}
+	else if(`attributeExists "imagePlaneCount" $camera`)
+	{	// add the image plane attribute to the new camera
+		addAttr -dt "string" -ln "imagePlaneCount" $new_cam;
+		int $iCount=`getAttr ($camera + ".imagePlaneCount")`;
+		setAttr -type "string" ($new_cam + ".imagePlaneCount") $iCount;
+		for($i=0;$i<$iCount;$i++){
+			addAttr -dt "string" -ln ("imagePlane"+$i) $new_cam;
+			setAttr -type "string" ($new_cam + ".imagePlane"+$i) `getAttr ($camera + ".imagePlane"+$i)`;
+		}
+	}
+	else if(`attributeExists "disconnected_ip" $camera`)
+	{	// add the image plane attribute to the new camera
+		addAttr -dt "string" -ln "disconnected_ip" $new_cam;
+		setAttr -type "string" ($new_cam + ".disconnected_ip") `getAttr ($camera + ".disconnected_ip")`;
+	}
+
+	// attach focal length to new camera if it's keyed
+	int $anim_focal = `connectionInfo -id ($camera + ".focalLength")`;
+	//print $anim_focal;
+	//int $anim_focal = `keyframe -q -keyframeCount ($camera + ".focalLength")`;
+	if($anim_focal)
+		connectAttr -f ($camera + ".focalLength") ($new_cam + ".focalLength");
+
+	// constrain the position and orientation
+	string $point_constraint[] = `pointConstraint $camera_trans $new_cam_trans`;
+	string $orient_constraint[] = `orientConstraint $camera_trans $new_cam_trans`;
+
+	// Maya 5.0 gives an error when we try to delete the contraints
+	$err1 = catch(`delete $point_constraint[0]`);
+	$err2 = catch(`delete $orient_constraint[0]`);
+		
+	$new_cam_trans = `rename $new_cam_trans ("baked_" + $camera_trans)`;
+	
+	
+	// give it a good name
+	$new_cam_trans = `rename $new_cam_trans ("Refined_" + $camera_trans)`;
+	
+	// pass a little error notification
+	if($err1 || $err2)
+		print("Maya wouldn't let me delete the constraints.");	
+
+	return $new_cam_trans;
+}
+
+global proc mmChangeInstructions(){
+	global string $image;
+	global string $checkBox2;
+	string $menuSelection = `optionMenuGrp -q -v rigType`;
+	switch($menuSelection){
+		case "No Rig":
+			checkBox -e -en 0 parentCheckBox;
+			checkBox -e -en 0 groupCheckBox;
+			image -e -i "/lustre/INHouse/MAYA/ishelf/icons/Matchmove/script_images/no_rig.bmp"-w 260 -h 180 $image;
+			break;
+		case "Simple Camera Rig":
+			//text 	-e -l "Select Your Camera" Instructions;
+			//text	-e -l "Groups a locator under the camera and a copy of\nthe camera under the locator." Description;
+			checkBox -e -en 1 parentCheckBox;
+			checkBox -e -en 1 groupCheckBox;
+			if (`checkBox -q -v groupCheckBox` && `checkBox -q -v parentCheckBox` == 1){
+				image -e -i "/lustre/INHouse/MAYA/ishelf/icons/Matchmove/script_images/simple_group.bmp"-w 260 -h 180 $image;
+			}
+			
+			if (`checkBox -q -v parentCheckBox` == 0 && `checkBox -q -v groupCheckBox` == 1){
+				image -e -i "/lustre/INHouse/MAYA/ishelf/icons/Matchmove/script_images/simple_group_noparent.bmp"-w 260 -h 180 $image;
+			}
+			if (`checkBox -q -v parentCheckBox` == 0 && `checkBox -q -v groupCheckBox` == 0){
+				image -e -i "/lustre/INHouse/MAYA/ishelf/icons/Matchmove/script_images/simple_noparent.bmp"-w 260 -h 180 $image;
+			}
+			if(`checkBox -q -v parentCheckBox` == 1 && `checkBox -q -v groupCheckBox` == 0){
+				image -e -i "/lustre/INHouse/MAYA/ishelf/icons/Matchmove/script_images/simple.bmp" -w 260 -h 180 $image;
+			}
+			break;
+		
+		case "Refined Rotation Control":
+			//text -e -l "Select Your Camera" Instructions;
+			//text	-e -l "Groups a stack of 3 locators under the camera\nfor seperate X, Y and Z Rotation and a copy of the camera\nunder them." Description;
+			checkBox -e -en 1 parentCheckBox;
+			checkBox -e -en 1 groupCheckBox;
+			if (`checkBox -q -v groupCheckBox` && `checkBox -q -v parentCheckBox` == 1){
+				image -e -i "/lustre/INHouse/MAYA/ishelf/icons/Matchmove/script_images/complexRotate_group.bmp"-w 260 -h 180 $image;
+			}
+			
+			if (`checkBox -q -v parentCheckBox` == 0 && `checkBox -q -v groupCheckBox` == 1){
+				image -e -i "/lustre/INHouse/MAYA/ishelf/icons/Matchmove/script_images/complexRotate_group_noparent.bmp"-w 260 -h 180 $image;
+			}
+			if (`checkBox -q -v parentCheckBox` == 0 && `checkBox -q -v groupCheckBox` == 0){
+				image -e -i "/lustre/INHouse/MAYA/ishelf/icons/Matchmove/script_images/complexRotate_noparent.bmp"-w 260 -h 180 $image;
+			}
+			if(`checkBox -q -v parentCheckBox` == 1 && `checkBox -q -v groupCheckBox` == 0){
+				image -e -i "/lustre/INHouse/MAYA/ishelf/icons/Matchmove/script_images/complexRotate.bmp" -w 260 -h 180 $image;
+			}
+			break;
+
+		case "Refined Translation Control":
+			//text -e -l "Select Your Camera" Instructions;
+			//text	-e -l "Groups a stack of 3 locators under the camera\nfor seperate X, Y and Z Translation and a copy of the camera\nunder them." Description;
+			checkBox -e -en 1 parentCheckBox;
+			checkBox -e -en 1 groupCheckBox;
+			if (`checkBox -q -v groupCheckBox` && `checkBox -q -v parentCheckBox` == 1){
+				image -e -i "/lustre/INHouse/MAYA/ishelf/icons/Matchmove/script_images/complexTranslate_group.bmp"-w 260 -h 180 $image;
+			}
+			
+			if (`checkBox -q -v parentCheckBox` == 0 && `checkBox -q -v groupCheckBox` == 1){
+				image -e -i "/lustre/INHouse/MAYA/ishelf/icons/Matchmove/script_images/complexTranslate_group_noparent.bmp"-w 260 -h 180 $image;
+			}
+			if (`checkBox -q -v parentCheckBox` == 0 && `checkBox -q -v groupCheckBox` == 0){
+				image -e -i "/lustre/INHouse/MAYA/ishelf/icons/Matchmove/script_images/complexTranslate_noparent.bmp"-w 260 -h 180 $image;
+			}
+			if(`checkBox -q -v parentCheckBox` == 1 && `checkBox -q -v groupCheckBox` == 0){
+				image -e -i "/lustre/INHouse/MAYA/ishelf/icons/Matchmove/script_images/complexTranslate.bmp" -w 260 -h 180 $image;
+			}
+			break;
+	
+		case "Group Pivot":
+			//text -e -l "Select Your Camera then a Locator" Instructions;
+			//text	-e -l "Parents the camera under the Locator so that the camera\nwill pivot around it." Description;
+			checkBox -e -en 0 parentCheckBox;
+			checkBox -e -en 0 groupCheckBox;
+			image -e -i "/lustre/INHouse/MAYA/ishelf/icons/Matchmove/script_images/gp.bmp" -w 260 -h 180 $image;
+			break;
+
+		case "Aim Constrain":
+			//text -e -l "Select Your Camera" Instructions;
+			//text	-e -l "Creates a Locator and constrains the camera's aim\nto it." Description;
+			checkBox -e -en 0 parentCheckBox;
+			checkBox -e -en 0 groupCheckBox;
+			image -e -i "/lustre/INHouse/MAYA/ishelf/icons/Matchmove/script_images/aim.bmp" -w 260 -h 180 $image;
+			break;
+	}
+}

@@ -1,0 +1,448 @@
+//Maya Preference 2018 (Release 1)
+//
+//
+
+//
+// The runtime commands referenced by the hotkeys
+//
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("{\n  string $currentPanel = `getPanel -underPointer`;\n  if (\"\" == $currentPanel) {\n      $currentPanel = `getPanel -withFocus`;\n  print $currentPanel;\n  }\n  if (\"\" != $currentPanel) {\n      string $panelType = `getPanel -typeOf $currentPanel`;\n      if ($panelType ==  \"modelPanel\") {\n     int $nurbsCurves = `modelEditor -q -nurbsCurves $currentPanel`;\n     print $nurbsCurves;\n     if ($nurbsCurves == 1)\n            modelEditor -edit -nurbsCurves 0 $currentPanel;\n     else\n        modelEditor -edit -nurbsCurves 1 $currentPanel;\n      } else if (`isTrue \"MayaCreatorExists\"` && `scriptedPanel -exists $currentPanel`\n          && `scriptedPanel -query -type $currentPanel` == \"dynPaintScriptedPanelType\") {\n          dynPaintEditor -edit -displayAppearance \"smoothShaded\"\n              $gDynPaintEditorName;\n      }\n  }\n}")
+	NURBSCurvesToggle;
+
+runTimeCommand
+	-annotation ""
+	-category "Custom Scripts"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import maya.cmds as mc \n\ndef getPanel(): \n    currentPanel = mc.getPanel(underPointer = True) \n    if currentPanel == None: \n        currentPanel = mc.getPanel(withFocus = True) \n    print(currentPanel) \n    return currentPanel \n\n\nmyPanel = getPanel() \nmc.modelEditor(myPanel, e=True, allObjects = False) \n")
+	hideAll;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import maya.cmds as mc\ndef getPanel():\n     currentPanel = mc.getPanel(underPointer = True) \n     if currentPanel == None: \n          currentPanel = mc.getPanel(withFocus = True) \n     print(currentPanel) \n     return currentPanel\n     \nmyPanel = getPanel()\nnurbsVisible = (mc.modelEditor(myPanel,q=True,imagePlane = True))\n\nif (nurbsVisible):\n    mc.modelEditor(myPanel, e=True, imagePlane = False)\nelse :\n    mc.modelEditor(myPanel, e=True, imagePlane = True)")
+	imageplaneToggle;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("//Show tangents in graph editor:   (I use \"9\")\nanimCurveEditor -edit -displayTangents false -displayActiveKeyTangents true graphEditor1GraphEd;")
+	ShowTangents;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("// world, local, object for xform\n// world, local, gimbal for rotate\n\nstring $currTool = `currentCtx`;\n\nif (`gmatch $currTool \"Rotate*\"`)\n{\nint $modeVal = `manipRotateContext -q -mode Rotate`;\nif ($modeVal == 1) {\n   manipRotateContext -e -mode 0 Rotate; print \"Local\";\n   }\nelse if ($modeVal == 0) {\n   manipRotateContext -e -mode 2 Rotate; print \"Gimbal\";\n   }\nelse if ($modeVal == 2) {\n   manipRotateContext -e -mode 1 Rotate; print \"World\";\n   }\n}\nelse if (`gmatch $currTool \"move*\"`)\n{\nint $modeVal = `manipMoveContext -q -mode Move`;\nif ($modeVal == 0) {\n   manipMoveContext -e -mode 1 Move; print \"Local\";\n   }\nelse if ($modeVal == 1) {\n   manipMoveContext -e -mode 2 Move; print \"World\";\n   }\nelse if ($modeVal == 2) {\n   manipMoveContext -e -mode 0 Move; print \"Object\";\n   }\n}\nelse if (`gmatch $currTool \"scale*\"`)\n{\nerror \"Sorry, no change for Scale tool\";\n}\nelse\n{\nerror \"No change for this tool\";\n}")
+	TransRotModeToggle;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("{\n  string $currentPanel = `getPanel -underPointer`;\n  if (\"\" == $currentPanel) {\n      $currentPanel = `getPanel -withFocus`;\n  print $currentPanel;\n  }\n  if (\"\" != $currentPanel) {\n      string $panelType = `getPanel -typeOf $currentPanel`;\n      if ($panelType ==  \"modelPanel\") {\n     int $polymeshes = `modelEditor -q -polymeshes $currentPanel`;\n     print $polymeshes;\n     if ($polymeshes == 1)\n            modelEditor -edit -polymeshes 0 $currentPanel;\n     else\n        modelEditor -edit -polymeshes 1 $currentPanel;\n      } else if (`isTrue \"MayaCreatorExists\"` && `scriptedPanel -exists $currentPanel`\n          && `scriptedPanel -query -type $currentPanel` == \"dynPaintScriptedPanelType\") {\n          dynPaintEditor -edit -displayAppearance \"smoothShaded\"\n              $gDynPaintEditorName;\n      }\n  }\n}\n")
+	PolyDisplayToggle;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("string $activePanel = `getPanel -wf`;\nif (`modelEditor -q -locators $activePanel` == 1) {\n modelEditor -e -locators 0 $activePanel;\n} else {\n modelEditor -e -locators 1 $activePanel;\n}\n")
+	locatorToggle;
+
+runTimeCommand
+	-annotation "muteToggle"
+	-category "Custom Scripts"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import maya.cmds as mc \n\n#Mute/Unmute Selected controllers \n\n\nisMute = mc.mute( mc.ls(sl=True)[0]+'.tx',query=True) \n\nif isMute: \n    mc.mute(mc.ls(sl=True), disable=True) \nelse: \n    mc.mute(mc.ls(sl=True)) \n")
+	muteToggle;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("//Hide tangents in the graph editor (super helpful):   (I use \"0\")\nanimCurveEditor -edit -displayTangents false -displayActiveKeyTangents false graphEditor1GraphEd;")
+	HideTangents;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import maya.cmds as mc \n\ndef getPanel(): \n    currentPanel = mc.getPanel(underPointer = True) \n    if currentPanel == None: \n        currentPanel = mc.getPanel(withFocus = True) \n    print(currentPanel) \n    return currentPanel \n\n\nmyPanel = getPanel() \n\ngpuVisible = mc.modelEditor(myPanel, q=True, queryPluginObjects = 'gpuCacheDisplayFilter') \n\nif (gpuVisible): \n    mc.modelEditor(myPanel, e=True, pluginObjects = ('gpuCacheDisplayFilter', False)) \nelse : \n    mc.modelEditor(myPanel, e=True, pluginObjects = ('gpuCacheDisplayFilter', True)) ")
+	gpuToggle;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("{\n   string $currentPanel_cam = `getPanel -underPointer`;\n   if (\"\" == $currentPanel_cam) {\n       $currentPanel_cam = `getPanel -withFocus`;\n   }\n   if (\"\" != $currentPanel_cam) {\n       string $panelType_cam = `getPanel -typeOf $currentPanel_cam`;\n       if ($panelType_cam ==  \"modelPanel\") {\n       int $polyDisplayState_cam = `modelEditor -q -cameras $currentPanel_cam`;\n       if ($polyDisplayState_cam == 0)\n           modelEditor -e -cameras 1 $currentPanel_cam;\n       else\n           modelEditor -e -cameras 0 $currentPanel_cam;\n       }\n   }\n}")
+	CamDisplayToggle;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("timeSliderPasteKey false;\n")
+	pastekey;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("{\n   string $currentPanel = `getPanel -underPointer`;\n   if (\"\" == $currentPanel) {\n       $currentPanel = `getPanel -withFocus`;\n   print $currentPanel;\n   }\n   if (\"\" != $currentPanel) {\n       string $panelType = `getPanel -typeOf $currentPanel`;\n       if ($panelType ==  \"modelPanel\") {\n      int $xray = `modelEditor -q -xray $currentPanel`;\n      print $xray;\n      if ($xray == 1)\n             modelEditor -edit -xray 0 $currentPanel;\n      else\n         modelEditor -edit -xray 1 $currentPanel;\n       } else if (`isTrue \"MayaCreatorExists\"` && `scriptedPanel -exists $currentPanel`\n           && `scriptedPanel -query -type $currentPanel` == \"dynPaintScriptedPanelType\") {\n           dynPaintEditor -edit -displayAppearance \"smoothShaded\"\n               $gDynPaintEditorName;\n       }\n   }\n}")
+	XRayToggle;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("\n#camera/persp switch script \n\nimport maya.cmds as cmds \n\nCAM=cmds.ls(type='camera') \n\nEXC=['frontShape','sideShape','perspShape','topShape'] \n\nfor i in EXC: \n\n    if i in CAM: \n\n        CAM.remove(i) \n\nif len(CAM)==0: \n\n    CAM=['perspShape'] \n\n\nRCAM=[] \n\nif len(CAM)>1: \n\n    for i in range(len(CAM)): \n\n        if 'render' in CAM[i]: \n\n            RCAM=CAM[i] \n\n    if len(RCAM)==0: \n\n        for i in range(len(CAM)): \n\n            if 'mm' in CAM[i]: \n\n                RCAM=CAM[i] \n\n            else: \n\n                pass \n\nelse: \n\n    RCAM=CAM \n\nif len(RCAM)==0: \n    RCAM=CAM[0] \n\ncP=cmds.getPanel(underPointer=1) \n\npType=cmds.getPanel(typeOf=cP) \n\nif not(pType ==\"modelPanel\"): \n\n    cP='modelPanel4' \n\n\n\nCurrentCAM=cmds.modelPanel(cP, cam=1,q=1 ) \n\n\nif CurrentCAM=='persp': \n\n    cmds.lookThru(RCAM,cP) \n\n\nelse : \n\n    cmds.lookThru('perspShape',cP) \n\n")
+	camView;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import pymel.core as pm \n\ndef reset_selected(oColl): \n\ttrList = ['.tx','.ty','.tz', '.rx', '.ry', '.rz'] \n\tsList = ['.sx', '.sy', '.sz'] \n\tfor attr in [(o, x) for o in oColl for x in trList]: \n\t\ttry: pm.Attribute(attr[0] + attr[1]).set(0) \n\t\texcept : pass \n\tfor attr in [(o, x) for o in oColl for x in sList]: \n\t\ttry: pm.Attribute(attr[0] + attr[1]).set(1) \n\t\texcept : pass \nrunthescript = pm.Callback(reset_selected, pm.selected()) \nrunthescript()")
+	zeroKey;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("timeSliderClearKey; ")
+	ClearKey;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("{\n   string $currentPanel = `getPanel -underPointer`;\n   if (\"\" == $currentPanel) {\n       $currentPanel = `getPanel -withFocus`;\n   }\n   if (\"\" != $currentPanel) {\n       string $panelType = `getPanel -typeOf $currentPanel`;\n       if ($panelType ==  \"modelPanel\") {\n       int $polyDisplayState = `modelEditor -q -joints $currentPanel`;\n       if ($polyDisplayState == 0)\n           modelEditor -e -joints 1 $currentPanel;\n       else\n           modelEditor -e -joints 0 $currentPanel;\n       }\n   }\n}")
+	JointDisplayToggle;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("timeSliderCopyKey;\n")
+	copy_key;
+
+//
+// The name commands referenced by the hotkeys
+//
+nameCommand
+	-annotation "CamDisplayToggleNameCommand"
+	-sourceType "mel"
+	-command ("CamDisplayToggle")
+	CamDisplayToggleNameCommand;
+
+nameCommand
+	-annotation "HideTangentsNameCommand"
+	-sourceType "mel"
+	-command ("HideTangents")
+	HideTangentsNameCommand;
+
+nameCommand
+	-annotation "JointDisplayToggleNameCommand"
+	-sourceType "mel"
+	-command ("JointDisplayToggle")
+	JointDisplayToggleNameCommand;
+
+nameCommand
+	-annotation "NURBSCurvesToggleNameCommand"
+	-sourceType "mel"
+	-command ("NURBSCurvesToggle")
+	NURBSCurvesToggleNameCommand;
+
+nameCommand
+	-annotation "PolyDisplayToggleNameCommand"
+	-sourceType "mel"
+	-command ("PolyDisplayToggle")
+	PolyDisplayToggleNameCommand;
+
+nameCommand
+	-annotation "ShowTangentsNameCommand"
+	-sourceType "mel"
+	-command ("ShowTangents")
+	ShowTangentsNameCommand;
+
+nameCommand
+	-annotation "TransRotModeToggleNameCommand"
+	-sourceType "mel"
+	-command ("TransRotModeToggle")
+	TransRotModeToggleNameCommand;
+
+nameCommand
+	-annotation "XRayToggleNameCommand"
+	-sourceType "mel"
+	-command ("XRayToggle")
+	XRayToggleNameCommand;
+
+nameCommand
+	-annotation "ClearKeyNameCommand"
+	-sourceType "mel"
+	-command ("ClearKey")
+	ClearKeyNameCommand;
+
+nameCommand
+	-annotation "OutlinerWindowNameCommand"
+	-sourceType "mel"
+	-command ("OutlinerWindow")
+	OutlinerWindowNameCommand;
+
+nameCommand
+	-annotation "GraphEditorNameCommand"
+	-sourceType "mel"
+	-command ("GraphEditor")
+	GraphEditorNameCommand;
+
+nameCommand
+	-annotation "PreviousKeyNameCommand"
+	-sourceType "mel"
+	-command ("PreviousKey")
+	PreviousKeyNameCommand;
+
+nameCommand
+	-annotation "NextKeyNameCommand"
+	-sourceType "mel"
+	-command ("NextKey")
+	NextKeyNameCommand;
+
+nameCommand
+	-annotation "HypershadeWindowNameCommand"
+	-sourceType "mel"
+	-command ("HypershadeWindow")
+	HypershadeWindowNameCommand;
+
+nameCommand
+	-annotation "copy_keyNameCommand"
+	-sourceType "mel"
+	-command ("copy_key")
+	copy_keyNameCommand;
+
+nameCommand
+	-annotation "pastekeyNameCommand"
+	-sourceType "mel"
+	-command ("pastekey")
+	pastekeyNameCommand;
+
+nameCommand
+	-annotation "CreateSetNameCommand"
+	-sourceType "mel"
+	-command ("CreateSet")
+	CreateSetNameCommand;
+
+nameCommand
+	-annotation "locatorToggleNameCommand"
+	-sourceType "mel"
+	-command ("locatorToggle")
+	locatorToggleNameCommand;
+
+nameCommand
+	-annotation "camViewNameCommand"
+	-sourceType "mel"
+	-command ("camView")
+	camViewNameCommand;
+
+nameCommand
+	-annotation "gpuToggleNameCommand"
+	-sourceType "mel"
+	-command ("gpuToggle")
+	gpuToggleNameCommand;
+
+nameCommand
+	-annotation "PreviousFrameNameCommand"
+	-sourceType "mel"
+	-command ("PreviousFrame")
+	PreviousFrameNameCommand;
+
+nameCommand
+	-annotation "NextFrameNameCommand"
+	-sourceType "mel"
+	-command ("NextFrame")
+	NextFrameNameCommand;
+
+nameCommand
+	-annotation "imageplaneToggleNameCommand"
+	-sourceType "mel"
+	-command ("imageplaneToggle")
+	imageplaneToggleNameCommand;
+
+nameCommand
+	-annotation "ToggleVisibilityAndKeepSelectionNameCommand"
+	-sourceType "mel"
+	-command ("ToggleVisibilityAndKeepSelection")
+	ToggleVisibilityAndKeepSelectionNameCommand;
+
+nameCommand
+	-annotation "zeroKeyNameCommand"
+	-sourceType "mel"
+	-command ("zeroKey")
+	zeroKeyNameCommand;
+
+nameCommand
+	-annotation "LowQualityDisplayNameCommand"
+	-sourceType "mel"
+	-command ("LowQualityDisplay")
+	LowQualityDisplayNameCommand;
+
+nameCommand
+	-annotation "DeleteKeysNameCommand"
+	-sourceType "mel"
+	-command ("DeleteKeys")
+	DeleteKeysNameCommand;
+
+nameCommand
+	-annotation "muteToggleNameCommand"
+	-sourceType "mel"
+	-command ("muteToggle")
+	muteToggleNameCommand;
+
+nameCommand
+	-annotation "hideAllNameCommand"
+	-sourceType "mel"
+	-command ("hideAll")
+	hideAllNameCommand;
+
+nameCommand
+	-annotation "PlaybackToggleNameCommand"
+	-sourceType "mel"
+	-command ("PlaybackToggle")
+	PlaybackToggleNameCommand;
+
+nameCommand
+	-annotation "show MyHotbox_00 hotbox"
+	-sourceType "python"
+	-command ("python(\"import hotbox_designer;from hotbox_designer import applications;hotbox_designer.initialize(applications.Maya());hotbox_designer.show('MyHotbox_00');\")")
+	showHotbox_MyHotbox_00;
+
+nameCommand
+	-annotation "hide MyHotbox_00 hotbox"
+	-sourceType "python"
+	-command ("python(\"import hotbox_designer;hotbox_designer.hide('MyHotbox_00');\")")
+	hideHotbox_MyHotbox_00;
+
+nameCommand
+	-annotation "show RryuHotbox_01 hotbox"
+	-sourceType "python"
+	-command ("python(\"import hotbox_designer;from hotbox_designer import applications;hotbox_designer.initialize(applications.Maya());hotbox_designer.show('RryuHotbox_01');\")")
+	showHotbox_RryuHotbox_01;
+
+nameCommand
+	-annotation "hide RryuHotbox_01 hotbox"
+	-sourceType "python"
+	-command ("python(\"import hotbox_designer;hotbox_designer.hide('RryuHotbox_01');\")")
+	hideHotbox_RryuHotbox_01;
+
+//
+// The user hotkeys
+//
+//
+// The hotkey set
+//
+hotkeySet -source "Maya_Default" -current daejeong_hotkey2;
+//
+// The hotkey contexts and hotkeys
+//
+hotkey -keyShortcut "." -name ("NextFrameNameCommand");
+hotkey -keyShortcut "t" -alt -name ("CamDisplayToggleNameCommand");
+hotkey -keyShortcut "2" -name ("NextKeyNameCommand");
+hotkey -keyShortcut "/" -name ("imageplaneToggleNameCommand");
+hotkey -keyShortcut "4" -alt -name ("LowQualityDisplayNameCommand");
+hotkey -keyShortcut "/" -releaseName ("");
+hotkey -keyShortcut "," -name ("PreviousFrameNameCommand");
+hotkey -keyShortcut "v" -alt -name ("PlaybackToggleNameCommand");
+hotkey -keyShortcut "<" -name ("PreviousKeyNameCommand");
+hotkey -keyShortcut "h" -ctl -alt -name ("HypershadeWindowNameCommand");
+hotkey -keyShortcut "9" -name ("HideTangentsNameCommand");
+hotkey -keyShortcut "m" -alt -name ("");
+hotkey -keyShortcut "o" -alt -name ("");
+hotkey -keyShortcut "t" -name ("showHotbox_RryuHotbox_01");
+hotkey -keyShortcut "t" -releaseName ("hideHotbox_RryuHotbox_01");
+hotkey -keyShortcut "8" -name ("ShowTangentsNameCommand");
+hotkey -keyShortcut "j" -name ("JointDisplayToggleNameCommand");
+hotkey -keyShortcut "j" -releaseName ("");
+hotkey -keyShortcut "1" -alt -name ("copy_keyNameCommand");
+hotkey -keyShortcut ">" -name ("NextKeyNameCommand");
+hotkey -keyShortcut "0" -name ("HfAttrSelect_Menu");
+hotkey -keyShortcut "n" -alt -name ("");
+hotkey -keyShortcut "0" -releaseName ("HfAttrSelect_Menu_revert");
+hotkey -keyShortcut "2" -alt -name ("pastekeyNameCommand");
+hotkey -keyShortcut "c" -cmd -name ("");
+hotkey -keyShortcut "h" -ctl -name ("ToggleVisibilityAndKeepSelectionNameCommand");
+hotkey -keyShortcut "" -name ("showHotbox_MyHotbox_00");
+hotkey -keyShortcut "l" -name ("locatorToggleNameCommand");
+hotkey -keyShortcut "" -releaseName ("hideHotbox_MyHotbox_00");
+hotkey -keyShortcut "l" -releaseName ("");
+hotkey -keyShortcut "o" -ctl -alt -name ("");
+hotkey -keyShortcut "q" -alt -name ("");
+hotkey -keyShortcut "v" -cmd -name ("");
+hotkey -keyShortcut "q" -alt -releaseName ("");
+hotkey -keyShortcut "y" -name ("hideAllNameCommand");
+hotkey -keyShortcut "1" -name ("PreviousKeyNameCommand");
+hotkey -keyShortcut "b" -releaseName ("");
+hotkey -keyShortcut "m" -name ("TransRotModeToggleNameCommand");
+hotkey -keyShortcut "b" -name ("NURBSCurvesToggleNameCommand");
+hotkey -keyShortcut "x" -alt -name ("zeroKeyNameCommand");
+hotkey -keyShortcut "m" -releaseName ("");
+hotkey -keyShortcut "o" -name ("OutlinerWindowNameCommand");
+hotkey -keyShortcut "o" -releaseName ("");
+hotkey -keyShortcut "d" -alt -name ("ClearKeyNameCommand");
+hotkey -keyShortcut ";" -name ("muteToggleNameCommand");
+hotkey -keyShortcut "x" -releaseName ("");
+hotkey -keyShortcut "x" -name ("XRayToggleNameCommand");
+hotkey -keyShortcut "a" -alt -name ("CreateSetNameCommand");
+hotkey -keyShortcut "i" -alt -name ("");
+hotkey -keyShortcut "n" -name ("PolyDisplayToggleNameCommand");
+hotkey -keyShortcut "n" -releaseName ("");
+hotkey -keyShortcut "q" -name ("showHotbox_MyHotbox_00");
+hotkey -keyShortcut "`" -releaseName ("");
+hotkey -keyShortcut "q" -releaseName ("hideHotbox_MyHotbox_00");
+hotkey -keyShortcut "`" -name ("camViewNameCommand");
+hotkey -keyShortcut "'" -name ("gpuToggleNameCommand");
+hotkey -keyShortcut "'" -releaseName ("");
+hotkey -keyShortcut "a" -releaseName ("");
+hotkey -keyShortcut "g" -alt -name ("DeleteKeysNameCommand");
+hotkey -keyShortcut "a" -name ("GraphEditorNameCommand");
+hotkey -keyShortcut "w" -alt -name ("");
+hotkey -keyShortcut "a" -ctl -alt -name ("");
+hotkey -keyShortcut "h" -name ("HypershadeWindowNameCommand");
+hotkeyCtx -type "Editor" -addClient "hyperShadePanel";
+hotkeyCtx -type "Editor" -addClient "nodeEditorPanel";
+hotkeyCtx -type "Editor" -addClient "shapePanel";
+hotkeyCtx -type "Editor" -addClient "timeEditorPanel";
+hotkeyCtx -type "Editor" -addClient "hyperGraphPanel";
+hotkeyCtx -type "Editor" -addClient "outlinerPanel";
+hotkeyCtx -type "Editor" -addClient "polyTexturePlacementPanel";
+hotkeyCtx -type "Editor" -addClient "posePanel";
+hotkeyCtx -type "Editor" -addClient "graphEditor";
+hotkeyCtx -type "Editor" -addClient "profilerPanel";
+hotkeyCtx -type "Tool" -addClient "xgmIGBrush";
+hotkeyCtx -type "Tool" -addClient "texCutContext";
+hotkeyCtx -type "Tool" -addClient "Unfold3DBrush";
+hotkeyCtx -type "Tool" -addClient "sculptMeshCache";
+hotkeyCtx -type "Tool" -addClient "SymmetrizeUVBrush";
+hotkeyCtx -type "Tool" -addClient "texSculptCacheContext";
+hotkeyCtx -type "Tool" -addClient "polyCutUV";
