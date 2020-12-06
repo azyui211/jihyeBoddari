@@ -17,10 +17,13 @@ kk_controllers 실행 시 아이콘 경로를 제대로 인식하지 못해서 �
 ![34512q](https://user-images.githubusercontent.com/57736960/101271632-e7171000-37c7-11eb-9b38-eb2d25a7cdcf.JPG)
 
 kk_controllersMD.mel 파일을 메모장으로 열어서  
-위 스샷의 녹색 부분 아이콘 폴더 경로를 바꿔 넣어주시면 됩니다.  
+위 스샷의 녹색 부분 아이콘 폴더 경로를 바꿔 넣어주시면 됩니다.
+
 예를 들어 /downloads/jhScriptBase/ 경로에 스크립트가 들어있다고 한다면  
-string $icon_path= $inhouseMayaPath+"/kk_icons/";라고 되어있는 것을  
-string $icon_path= "/downloads/jhScriptBase/scripts/kk_icons/"; 라고 경로를 바꿔주시면 됩니다.  
+#### string $icon_path= $inhouseMayaPath+"/kk_icons/";  
+라고 되어있는 것을  
+#### string $icon_path= "/downloads/jhScriptBase/scripts/kk_icons/";  
+라고 경로를 바꿔주시면 됩니다.  
 경로 마지막에 / (슬래시) 붙이는 것을 잊지 마시길 바랍니다.
 
 - Anim School Picker (애님 픽커 다운로드 사이트)  
